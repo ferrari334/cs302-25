@@ -44,12 +44,13 @@ int main(int argc, char *argv[]) {
   // use map to have char and how many times that char appears
   // read in elements with characters and spaces
   // ignore numbers, spaces, and punctuation
-  getline(cin, input);
-  //  input.lowercase();
-  if (is_palindrome(input)) {
-    cout << "The string is a palindrome permutation" << endl;
-  } else {
-    cout << "The string is not a palindrome permutation" << endl;
+  while (getline(cin, input)) {
+    //  input.lowercase();
+    if (is_palindrome(input)) {
+      cout << '"' << input << '"' << " is a palindrome permutation" << endl;
+    } else {
+      cout << '"' << input << '"' << " is not a palindrome permutation" << endl;
+    }
   }
   // output if phrase is palindrome or not
   return (0);
