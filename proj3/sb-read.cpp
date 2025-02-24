@@ -4,49 +4,66 @@
 #include <vector>
 
 using namespace std;
+/*
+- reads in a game board and prints out some very basic information
+- already written
+- rows: the number of rows on the game board
+- cols: the number of columns on the game board
+- min-score-size: the number of contiguous cells that must be touching to score
+them
+- colors: this must be a string of distinct lower-case letters that represent
+the possible colors a cell can have. The point value of the first is 2 and goes
+up by 1 for each new letter in the string
 
+ */
 class Superball {
-  public:
-    Superball(int argc, char **argv);
-    int r;
-    int c;
-    int mss;
-    int empty;
-    vector <int> board;
-    vector <int> goals;
-    vector <int> colors;
+public:
+  Superball(int argc, char **argv);
+  int r;              // row
+  int c;              // col
+  int mss;            // min score size
+  int empty;          // empty cells on board
+  vector<int> board;  // current state of board
+  vector<int> goals;  // locations on goals
+  vector<int> colors; // 256 elements in goal?
 };
 
-void usage(const char *s) 
-{
+void usage(const char *s) {
   fprintf(stderr, "usage: sb-read rows cols min-score-size colors\n");
-  if (s != NULL) fprintf(stderr, "%s\n", s);
+  if (s != NULL)
+    fprintf(stderr, "%s\n", s);
   exit(1);
 }
 
-Superball::Superball(int argc, char **argv)
-{
+Superball::Superball(int argc, char **argv) {
   int i, j;
   string s;
 
-  if (argc != 5) usage(NULL);
+  if (argc != 5)
+    usage(NULL);
 
-  if (sscanf(argv[1], "%d", &r) == 0 || r <= 0) usage("Bad rows");
-  if (sscanf(argv[2], "%d", &c) == 0 || c <= 0) usage("Bad cols");
-  if (sscanf(argv[3], "%d", &mss) == 0 || mss <= 0) usage("Bad min-score-size");
+  if (sscanf(argv[1], "%d", &r) == 0 || r <= 0)
+    usage("Bad rows");
+  if (sscanf(argv[2], "%d", &c) == 0 || c <= 0)
+    usage("Bad cols");
+  if (sscanf(argv[3], "%d", &mss) == 0 || mss <= 0)
+    usage("Bad min-score-size");
 
   colors.resize(256, 0);
 
-  for (i = 0; i < (int) strlen(argv[4]); i++) {
-    if (!isalpha(argv[4][i])) usage("Colors must be distinct letters");
-    if (!islower(argv[4][i])) usage("Colors must be lowercase letters");
-    if (colors[argv[4][i]] != 0) usage("Duplicate color");
-    colors[argv[4][i]] = 2+i;
-    colors[toupper(argv[4][i])] = 2+i;
+  for (i = 0; i < (int)strlen(argv[4]); i++) {
+    if (!isalpha(argv[4][i]))
+      usage("Colors must be distinct letters");
+    if (!islower(argv[4][i]))
+      usage("Colors must be lowercase letters");
+    if (colors[argv[4][i]] != 0)
+      usage("Duplicate color");
+    colors[argv[4][i]] = 2 + i;
+    colors[toupper(argv[4][i])] = 2 + i;
   }
 
-  board.resize(r*c);
-  goals.resize(r*c, 0);
+  board.resize(r * c);
+  goals.resize(r * c, 0);
 
   empty = 0;
 
@@ -55,7 +72,7 @@ Superball::Superball(int argc, char **argv)
       fprintf(stderr, "Bad board: not enough rows on standard input\n");
       exit(1);
     }
-    if ((int) s.size() != c) {
+    if ((int)s.size() != c) {
       fprintf(stderr, "Bad board on row %d - wrong number of characters.\n", i);
       exit(1);
     }
@@ -64,27 +81,28 @@ Superball::Superball(int argc, char **argv)
         fprintf(stderr, "Bad board row %d - bad character %c.\n", i, s[j]);
         exit(1);
       }
-      board[i*c+j] = s[j];
-      if (board[i*c+j] == '.') empty++;
-      if (board[i*c+j] == '*') empty++;
-      if (isupper(board[i*c+j]) || board[i*c+j] == '*') {
-        goals[i*c+j] = 1;
-        board[i*c+j] = tolower(board[i*c+j]);
+      board[i * c + j] = s[j];
+      if (board[i * c + j] == '.')
+        empty++;
+      if (board[i * c + j] == '*')
+        empty++;
+      if (isupper(board[i * c + j]) || board[i * c + j] == '*') {
+        goals[i * c + j] = 1;
+        board[i * c + j] = tolower(board[i * c + j]);
       }
     }
   }
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Superball *s;
   int ngoal, tgoal;
- 
+
   s = new Superball(argc, argv);
 
   tgoal = 0;
   ngoal = 0;
-  for (int i = 0; i < s->r*s->c; i++) {
+  for (int i = 0; i < s->r * s->c; i++) {
     if (s->goals[i] && s->board[i] != '*') {
       tgoal += s->colors[s->board[i]];
       ngoal++;
@@ -92,7 +110,7 @@ int main(int argc, char **argv)
   }
 
   printf("Empty cells:                    %2d\n", s->empty);
-  printf("Non-Empty cells:                %2d\n", s->r*s->c - s->empty);
+  printf("Non-Empty cells:                %2d\n", s->r * s->c - s->empty);
   printf("Number of pieces in goal cells: %2d\n", ngoal);
   printf("Sum of their values:            %2d\n", tgoal);
   exit(0);

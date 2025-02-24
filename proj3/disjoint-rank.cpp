@@ -4,26 +4,24 @@
    Tue Sep 25 15:51:14 EDT 2018
  */
 
-#include <vector>
-#include <cstdlib>
-#include <cstdio>
-#include <iostream>
 #include "disjoint.h"
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <vector>
 using namespace std;
 
-DisjointSetByRankWPC::DisjointSetByRankWPC(int nelements)
-{
+DisjointSetByRankWPC::DisjointSetByRankWPC(int nelements) {
   links.resize(nelements, -1);
   ranks.resize(nelements, 1);
 }
 
-int DisjointSetByRankWPC::Union(int s1, int s2)
-{
+int DisjointSetByRankWPC::Union(int s1, int s2) {
   int p, c;
 
-    if (s1 == s2)
-       return (-1);
-   
+  if (s1 == s2)
+    return (-1);
+
   if (links[s1] != -1 || links[s2] != -1) {
     cerr << "Must call union on a set, and not just an element.\n";
     exit(1);
@@ -36,15 +34,15 @@ int DisjointSetByRankWPC::Union(int s1, int s2)
     p = s2;
     c = s1;
   }
-  
+
   links[c] = p;
-  if (ranks[p] == ranks[c]) ranks[p]++;
+  if (ranks[p] == ranks[c])
+    ranks[p]++;
   return p;
 }
 
-int DisjointSetByRankWPC::Find(int e)
-{
-  int p, c;   // P is the parent, c is the child.
+int DisjointSetByRankWPC::Find(int e) {
+  int p, c; // P is the parent, c is the child.
 
   /* Find the root of the tree, but along the way, set
      the parents' links to the children. */
@@ -65,25 +63,27 @@ int DisjointSetByRankWPC::Find(int e)
   while (e != -1) {
     c = links[e];
     links[e] = p;
-    e =c;
+    e = c;
   }
   return p;
 }
 
-void DisjointSetByRankWPC::Print()
-{
+void DisjointSetByRankWPC::Print() {
   int i;
 
   printf("\n");
   printf("Node:  ");
-  for (i = 0; i < (int) links.size(); i++) printf("%3d", i);  
+  for (i = 0; i < (int)links.size(); i++)
+    printf("%3d", i);
   printf("\n");
 
   printf("Links: ");
-  for (i = 0; i < (int) links.size(); i++) printf("%3d", links[i]);  
+  for (i = 0; i < (int)links.size(); i++)
+    printf("%3d", links[i]);
   printf("\n");
 
   printf("Ranks: ");
-  for (i = 0; i < (int) links.size(); i++) printf("%3d", ranks[i]);  
+  for (i = 0; i < (int)links.size(); i++)
+    printf("%3d", ranks[i]);
   printf("\n\n");
 }
