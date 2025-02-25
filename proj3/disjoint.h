@@ -11,23 +11,24 @@
 using namespace std;
 
 class DisjointSet {
-  public:
-    virtual ~DisjointSet() {};
-    virtual int Union(int s1, int s2) = 0;
-    virtual int Find(int element) = 0;  
-    virtual void Print() = 0;
+public:
+  virtual ~DisjointSet(){};
+  virtual int Union(int s1, int s2) = 0;
+  virtual int Find(int element) = 0;
+  virtual void Print() = 0;
 };
 
-/* We will use Dr. Plank's third subclass implementation -- Union-by-Rank with path compression. */
+/* We will use Dr. Plank's third subclass implementation -- Union-by-Rank with
+ * path compression. */
 
 class DisjointSetByRankWPC : public DisjointSet {
-  public:
-    DisjointSetByRankWPC(int nelements);
-    int Union(int s1, int s2);
-    int Find(int element); 
-    void Print();
+public:
+  DisjointSetByRankWPC(int nelements);
+  int Union(int s1, int s2);
+  int Find(int element);
+  void Print();
 
-  protected:
-    vector <int> links;
-    vector <int> ranks;
+protected:
+  vector<int> links;
+  vector<int> ranks;
 };
