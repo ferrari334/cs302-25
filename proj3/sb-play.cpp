@@ -59,8 +59,8 @@ string Superball::end_game_move() {
       valid.push_back(i);
     }
   }
-
-  // choose a random valid cell on board
+  // *****choose a cell where one of the swaps neighbors is a like color
+  //  choose a random valid cell on board
   int idx1 = valid[rand() % valid.size()];
   int idx2 = valid[rand() % valid.size()];
   while (idx1 == idx2) {
