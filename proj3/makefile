@@ -18,3 +18,7 @@ bin/sb-analyze: sb-analyze.cpp disjoint-rank.cpp
 
 bin/sb-play: sb-play.cpp disjoint-rank.cpp
 	$(CPP) $(CFLAGS) $(INCLUDE) -o bin/sb-play sb-play.cpp disjoint-rank.cpp
+
+
+bin/sb-play2: sb-play2.cpp disjoint-rank.cpp
+	$(CPP) $(CFLAGS) $(INCLUDE) -o bin/sb-play2 sb-play2.cpp disjoint-rank.cpp
