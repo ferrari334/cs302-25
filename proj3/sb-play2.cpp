@@ -1,27 +1,16 @@
 //
-//
-#include "disjoint.h" // This header comes from disjoint-rank.cpp
+#include "disjoint.h"
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <ctime>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <vector>
 
 using namespace std;
-
-// Simple Moves class to hold a swap move (pair of indices)
-class Moves {
-public:
-  int first;
-  int second;
-};
-
-// Helper function: returns the connectivity score (number of adjacent cells
-// with the same color) for the cell at (row, col) in the given board.
+// method for analyzing if cells around a cell are same color
 int connectivity(const vector<int> &board, int row, int col, int r, int c) {
   int score = 0;
   char cell = board[row * c + col];
@@ -39,9 +28,7 @@ int connectivity(const vector<int> &board, int row, int col, int r, int c) {
     score++;
   return score;
 }
-
-// Helper function: returns true if the cell at (row, col) is adjacent to a goal
-// cell.
+// tests if cell is next to a goal cell
 bool has_goal_adjacent(int row, int col, const vector<int> &goals, int r,
                        int c) {
   if (row > 0 && goals[(row - 1) * c + col] == 1)
@@ -55,36 +42,6 @@ bool has_goal_adjacent(int row, int col, const vector<int> &goals, int r,
   return false;
 }
 
-class Superball {
-public:
-  // Constructor: reads command-line arguments and board from standard input.
-  Superball(int argc, char **argv);
-  int r, c, mss, empty;
-  vector<int> board;  // Board cells (each stored as a char value)
-  vector<int> goals;  // 1 if cell is a goal cell; 0 otherwise.
-  vector<int> colors; // Color mapping (e.g., "pbyrg")
-
-  // New members for move generation:
-  vector<int> moves;  // Indices of valid colored cells for swapping.
-  vector<int> pmoves; // Temporary vector for generating combinations.
-  map<int, vector<Moves *>>
-      movemap; // Map from candidate score to candidate moves.
-  map<int, int>
-      score; // Map from a component representative to a scoring cell index.
-  DisjointSetByRankWPC
-      *d; // Pointer to our disjoint set (from disjoint-rank.cpp)
-
-  // Functions used for move selection:
-  string
-  analyze_superball();    // Returns a move string ("SCORE ..." or "SWAP ...")
-  string end_game_move(); // Returns a swap move based on candidate evaluation.
-  void gen_moves();       // Populate the moves vector from board cells.
-  void nchoosek(int index, int n); // Generate combinations of 2 moves.
-  void move_ranker();              // Simulate a swap and rank it.
-  int score1(); // Check for a scoring move; return cell index or -1.
-  void usage(const char *msg);
-};
-
 struct metadata {
   int size;
   char color;
@@ -92,11 +49,39 @@ struct metadata {
   int scoring_col;
   bool has_scoring;
 };
+// hold possible moves
+class Choices {
+public:
+  int first_choice;
+  int second_choice;
+};
 
-// ----------------- Helper Functions for Move Generation -----------------
+class Superball {
+public:
+  Superball(int argc, char **argv);
+  int r, c, mss, empty;
+  vector<int> board;
+  vector<int> goals;
+  vector<int> colors;
 
-// Populate the moves vector with indices of cells that contain colored pieces.
-void Superball::gen_moves() {
+  vector<int> moves;      // holds good cells
+  vector<int> tempCombos; // a temp vector to hold possible swaps
+  map<int, vector<Choices *>>
+      movemap; // ranking the possible score with possible moves. used to get
+               // best next move
+  map<int, int> score; // maps possible moves to where scoring cell is
+  DisjointSetByRankWPC *d;
+
+  string analyze_superball();
+  string end_game_move(); // swap move selection
+  void possible_moves();  // fill vector with possible moves of available cells
+  void switch_choices(int index, int n); // make swaps
+  void best_moves();                     // test swap and rank it
+  int score_checker();                   // check if a scoring move is available
+};
+
+// adds cells that are colored pieces not dead space
+void Superball::possible_moves() {
   moves.clear();
   for (int i = 0; i < (int)board.size(); i++) {
     if (board[i] != '.' && board[i] != '*') {
@@ -105,101 +90,64 @@ void Superball::gen_moves() {
   }
 }
 
-// Recursively generate all 2-combinations from moves; for each combination,
-// call move_ranker().
-void Superball::nchoosek(int index, int n) {
+// selects 2 cells and tests what is a better move
+void Superball::switch_choices(int index, int n) {
   if (n == 0) {
-    move_ranker();
+    best_moves();
     return;
   }
   if (n > (int)moves.size() - index)
     return;
-  pmoves.push_back(moves[index]);
-  nchoosek(index + 1, n - 1);
-  pmoves.pop_back();
-  nchoosek(index + 1, n);
+  tempCombos.push_back(moves[index]);
+  switch_choices(index + 1, n - 1);
+  tempCombos.pop_back();
+  switch_choices(index + 1, n);
 }
 
-// Simulate a swap of the two indices in pmoves, compute connectivity
-// improvement, and rank the candidate.
-void Superball::move_ranker() {
-  int idx1 = pmoves[0];
-  int idx2 = pmoves[1];
+// tests a swap move and ranks what swaps are the best option
+void Superball::best_moves() {
+  // Get the two candidate indices.
+  int idx1 = tempCombos[0];
+  int idx2 = tempCombos[1];
   int r1 = idx1 / c, c1 = idx1 % c;
   int r2 = idx2 / c, c2 = idx2 % c;
 
-  // Compute original connectivity scores.
+  // test swap on temp board
   int oldScore1 = connectivity(board, r1, c1, r, c);
   int oldScore2 = connectivity(board, r2, c2, r, c);
-
-  // Simulate the swap on a temporary board.
   vector<int> tempBoard = board;
   swap(tempBoard[idx1], tempBoard[idx2]);
   int newScore1 = connectivity(tempBoard, r1, c1, r, c);
   int newScore2 = connectivity(tempBoard, r2, c2, r, c);
 
-  // Candidate score: connectivity improvement plus bonus if adjacent to a goal.
+  // ranking the possible swaps, swap is better if its next to a goal cell
   int candidateScore = (newScore1 - oldScore1) + (newScore2 - oldScore2);
+  // bonus for cell if adjacent to a goal cell.
   if (has_goal_adjacent(r1, c1, goals, r, c))
     candidateScore += 3;
   if (has_goal_adjacent(r2, c2, goals, r, c))
     candidateScore += 3;
 
-  // Only record moves that yield a positive improvement.
+  // only want moves that impove the board
   if (candidateScore <= 0)
     return;
 
-  Moves *m = new Moves;
-  m->first = idx1;
-  m->second = idx2;
+  Choices *choice = new Choices;
+  choice->first_choice = idx1;
+  choice->second_choice = idx2;
+
   if (movemap.find(candidateScore) != movemap.end()) {
-    movemap[candidateScore].push_back(m);
+    movemap[candidateScore].push_back(choice);
   } else {
-    vector<Moves *> tmp;
-    tmp.push_back(m);
+    vector<Choices *> tmp;
+    tmp.push_back(choice);
     movemap.insert(make_pair(candidateScore, tmp));
   }
 }
 
-// ----------------- End Game Move: Candidate Swap Selection -----------------
-
-string Superball::end_game_move() {
-  gen_moves();
-  pmoves.clear();
-  movemap.clear();
-  nchoosek(0, 2);
-
-  // If no candidate moves were generated, fallback to a random swap.
-  if (movemap.empty()) {
-    int idx1 = moves[rand() % moves.size()];
-    int idx2 = moves[rand() % moves.size()];
-    while (idx1 == idx2)
-      idx2 = moves[rand() % moves.size()];
-    int r1 = idx1 / c, c1 = idx1 % c;
-    int r2 = idx2 / c, c2 = idx2 % c;
-    ostringstream oss;
-    oss << "SWAP " << r1 << " " << c1 << " " << r2 << " " << c2;
-    return oss.str();
-  }
-
-  // Otherwise, select the candidate move with the highest score.
-  auto it = movemap.end();
-  it--;
-  vector<Moves *> best = it->second;
-  Moves *chosen = best[0];
-  int r1 = chosen->first / c, c1 = chosen->first % c;
-  int r2 = chosen->second / c, c2 = chosen->second % c;
-  ostringstream oss;
-  oss << "SWAP " << r1 << " " << c1 << " " << r2 << " " << c2;
-  return oss.str();
-}
-
-// ----------------- Scoring Move Evaluation -----------------
-
-// score1() uses our disjoint-set to compute connected component sizes and
-// checks if any component is large enough and contains a goal cell.
-// If yes, returns the index of a scoring cell; otherwise, returns -1.
-int Superball::score1() {
+// uses disjoint set to test connected cell sizes. check if set is big enough to
+// score
+int Superball::score_checker() {
   int total = r * c;
   vector<int> sizes(total, 0);
   for (int i = 0; i < total; i++) {
@@ -221,24 +169,51 @@ int Superball::score1() {
   }
 }
 
-// ----------------- Board Analysis -----------------
+// selects swap move from test moves, if nothing then random swap
+string Superball::end_game_move() {
+  // find all valid moves from board
+  possible_moves();
+  tempCombos.clear();
+  movemap.clear();
+  switch_choices(0, 2);
 
-// analyze_superball() performs union–find on the board (using left and up
-// neighbors) to group connected same-colored cells, then builds component
-// metadata. If a component qualifies (size >= mss and contains a goal cell), it
-// returns a SCORE move; otherwise, it returns a swap move from end_game_move().
+  // If movemap is empty do a random swap
+  if (movemap.empty()) {
+    int idx1 = moves[rand() % moves.size()];
+    int idx2 = moves[rand() % moves.size()];
+    while (idx1 == idx2)
+      idx2 = moves[rand() % moves.size()];
+    int r1 = idx1 / c, c1 = idx1 % c;
+    int r2 = idx2 / c, c2 = idx2 % c;
+    ostringstream oss;
+    oss << "SWAP " << r1 << " " << c1 << " " << r2 << " " << c2;
+    return oss.str();
+  }
+
+  // if movemap is not empty choose the move with the highest ranking
+  auto it = movemap.end();
+  it--;
+  vector<Choices *> best = it->second;
+  Choices *chosen = best[0];
+  int r1 = chosen->first_choice / c, c1 = chosen->first_choice % c;
+  int r2 = chosen->second_choice / c, c2 = chosen->second_choice % c;
+  ostringstream oss;
+  oss << "SWAP " << r1 << " " << c1 << " " << r2 << " " << c2;
+  return oss.str();
+}
+
+// finds possible move
 string Superball::analyze_superball() {
   ostringstream oss;
 
-  // If nearly full (fewer than 5 empty cells), return a swap move.
+  // if the board is almost full, return a swap move
   if (empty < 5)
     return end_game_move();
 
-  // Create a new disjoint set using DisjointSetByRankWPC.
   d = new DisjointSetByRankWPC(r * c);
   score.clear();
 
-  // Perform union operations using left and up neighbors.
+  // union left and up neighbors
   for (int i = 0; i < r; i++) {
     for (int j = 0; j < c; j++) {
       int idx = i * c + j;
@@ -261,7 +236,7 @@ string Superball::analyze_superball() {
     }
   }
 
-  // Build component metadata and score map using goal cells.
+  // build component metadata and record goal cells
   vector<metadata> comp(r * c, {0, ' ', -1, -1, false});
   for (int i = 0; i < r; i++) {
     for (int j = 0; j < c; j++) {
@@ -289,7 +264,7 @@ string Superball::analyze_superball() {
     }
   }
 
-  // If any component qualifies as a scoring move, return a SCORE move.
+  // if component is a scoring move, score
   for (int i = 0; i < r * c; i++) {
     if (comp[i].size >= mss && comp[i].has_scoring) {
       oss << "SCORE " << comp[i].scoring_row << " " << comp[i].scoring_col;
@@ -297,20 +272,16 @@ string Superball::analyze_superball() {
     }
   }
 
-  // Otherwise, return a swap move from our candidate generation.
+  // if its not a scoring move then swap
   return end_game_move();
 }
 
-// ----------------- Usage Function -----------------
-
-void Superball::usage(const char *msg) {
+void usage(const char *msg) {
   cerr << "usage: sb-analyze rows cols min-score-size colors" << endl;
   if (msg)
     cerr << msg << endl;
   exit(1);
 }
-
-// ----------------- Constructor -----------------
 
 Superball::Superball(int argc, char **argv) {
   int i, j;
@@ -367,14 +338,12 @@ Superball::Superball(int argc, char **argv) {
   }
 }
 
-// ----------------- Main -----------------
-
 int main(int argc, char **argv) {
   if (argc != 5) {
     cerr << "usage: sb-analyze rows cols min-score-size colors" << endl;
     exit(1);
   }
-  srand(time(NULL));
+  // srand(time(NULL));
   Superball *s = new Superball(argc, argv);
   string move = s->analyze_superball();
   cout << move << endl;
